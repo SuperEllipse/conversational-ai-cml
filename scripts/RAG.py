@@ -47,74 +47,63 @@ logger.info("INFO : ollama exists")
 ## Run Ollama as a background process
 import time
 import ollama
+import time
+import subprocess
+import psutil
 
-try:
-    # Start the background process
-    serve_process = subprocess.Popen(['ollama', 'serve'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    # Wait for 3 seconds to allow the background process to start
-    time.sleep(3)
-
-
-#    # What should be the size of the models here ?? 
-#    models = ['gemma:2b', 'llama2']
-#    for model in models:
-
-##NEED TO FIGURE OUT HOW TO PULL OLLAMA PULL IN BOOTSTRAP or CHECK if it is allready pulled and not put it ther eagain
-#      ollama.pull(model)
-
-#    ollama.pull('llama2')
-    response = ollama.chat(model='llama2', messages=[{'role': 'user', 'content': 'Why is the sky blue?'}])
-    if ( response['done'] == True):
-      print('MODEL RESPONSE OBTAINED')
-      print(response)
-      
-    
-#    # Terminate the background process
-#    serve_process.terminate()
+# Code block to measure time to load model
+start_time = time.time()
 
 
-except Exception as e:
-    print(f"Error: {e}")
-    # Terminate the background process if it's still running
-    if serve_process.poll() is None:
-        serve_process.terminate()
-    sys.exit(1)
+def is_process_running(process_name):
+  """
+  Check if a process with the given name is running.
+  """
+  for proc in psutil.process_iter(['name']):
+    try:
+      if process_name.lower() in proc.info['name'].lower():
+        return True
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+      pass
+  return False
 
-logger.info("INFO : Model Loaded")
-    
-##Let us set up our LLM Now
-#Settings.llm = Ollama(model="gemma:2b", request_timeout=120.0, keep_alive=-1)
-#Settings.llm.base_url="http://127.0.0.1:8080"
-#
-#
-#Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
-#
-#
-##index = VectorStoreIndex.from_documents(documents)
-## load from disk
-#db2 = chromadb.PersistentClient(path="./chroma_db")
-#chroma_collection = db2.get_or_create_collection("quickstart")
-#vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-#index = VectorStoreIndex.from_vector_store(
-#    vector_store,
-#    embed_model=Settings.embed_model,
-#)
-##Load from the disk : This is not working
-## rebuild storage context
-##storage_context = StorageContext.from_defaults(persist_dir="/home/cdsw/data/index")
-##
-### load index
-##index = load_index_from_storage(storage_context)
-#
-#
-#query_engine = index.as_query_engine()
-#response = query_engine.query("What did the author do growing up?")
-##response = query_engine.query("What was the new version of Arc about?")
-#display(Markdown(f"<b>{response}</b>"))
+# Check if the 'ollama' process is already running
+if is_process_running('ollama'):
+  logger.info(f"'ollama' is already running.")
+else:
+  # Start the 'ollama' process in the background
+  serve_process = subprocess.Popen(['ollama', 'serve'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+  logger.info(f"INFO: 'ollama' process started.")
+  try:
+      # Start the background process
+      serve_process = subprocess.Popen(['ollama', 'serve'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+      # Wait for 3 seconds to allow the background process to start
+      time.sleep(3)
+
+      response = ollama.chat(model='llama2', messages=[{'role': 'user', 'content': 'Why is the sky blue?'}])
+      if ( response['done'] == True):
+        logger.info('INFO: Model Response Obtained')
+        print(response)
 
 
-## CHAINLIT CODE ADDED HERE
+  # Calculate the elapsed time
+      end_time = time.time()
+      elapsed_time = end_time - start_time
+      logger.info(f"INFO: Model Loaded, Time required: {elapsed_time:.6f} seconds")
+
+
+  except Exception as e:
+      print(f"Error: {e}")
+      # Terminate the background process if it's still running
+      if serve_process.poll() is None:
+          serve_process.terminate()
+      sys.exit(1)
+        
+  
+  
+## CHAINLIT : chat with user 
+
 import chainlit as cl
 @cl.on_chat_start
 async def start():
@@ -127,22 +116,14 @@ async def start():
 
   Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
-
-  #index = VectorStoreIndex.from_documents(documents)
-  # load from disk
+  # load index from disk: Assumes that the bootstrap.py job has been run
   db2 = chromadb.PersistentClient(path="./chroma_db")
   chroma_collection = db2.get_or_create_collection("quickstart")
   vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-  index = VectorStoreIndex.from_vector_store(
-      vector_store,
-      embed_model=Settings.embed_model,
-  )
-  #Load from the disk : This is not working
-  # rebuild storage context
-  #storage_context = StorageContext.from_defaults(persist_dir="/home/cdsw/data/index")
-  #
-  ## load index
-  #index = load_index_from_storage(storage_context)
+  
+  storage_context = StorageContext.from_defaults(persist_dir="~/data/index", vector_store=vector_store)
+  logger.info("INFO:Loading the Index")
+  index = load_index_from_storage(storage_context, embed_model=Settings.embed_model)
 
 
   query_engine = index.as_query_engine()
@@ -155,7 +136,7 @@ async def start():
   logger.info(f"INFO : Inside On chat start: Response from Query Engine{response}")
   
   cl.user_session.set("query_engine", query_engine)
-  await cl.Message(content=f"You have started a chat with Gemma Model!").send()
+  await cl.Message(content=f"You have started a chat with LLama2 Model!").send()
   
 @cl.on_message
 async def main(message: cl.Message):
@@ -164,11 +145,6 @@ async def main(message: cl.Message):
  
   query_engine = cl.user_session.get("query_engine") # type: RetrieverQueryEngine
   
-#  msg = cl.Message(content="", author="Assistant")
-#  
-#  response = query_engine.query("What did the author do as he was growing up?")
-#  logger.info(f"INFO : Inside On Message: Response from Query Engine : {response}")
- 
 
   response = await cl.make_async(query_engine.query)(message.content)
   logger.info(f"INFO:{response}")
