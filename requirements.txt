@@ -1,0 +1,13 @@
+# Vish: Need to add version numbers later
+ollama==0.1.8
+llama-index==0.10.24
+pysqlite3-binary
+chainlit
+llama-index-llms-ollama
+llama-index-embeddings-ollama
+#llama-index-embeddings-huggingface
+llama-index-embeddings-fastembed
+llama-index-vector-stores-chroma
+chromadb
+fastembed
+trafilatura
