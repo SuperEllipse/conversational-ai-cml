@@ -79,7 +79,7 @@ def main():
     urls = df["loc"].to_numpy()
     urls = [url for url in urls if "%" not in url]
 
-    with open("./data/chapters.txt", "w") as f:
+    with open("/home/cdsw/data/raw/chapters.txt", "w") as f:
         for url in tqdm(urls[1:]):
             topic = url.split("/")[-2]
             if "hindi" in topic or topic in ["the-vegetable-list", "bonus-share-vs-stock-split", "getting-started-2"]:

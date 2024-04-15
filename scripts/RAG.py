@@ -8,6 +8,12 @@ from llama_index.core import StorageContext,  load_index_from_storage
 from llama_index.core import Settings
 from IPython.display import Markdown, display
 import chromadb
+## Run Ollama as a background process
+import ollama
+import time
+import subprocess
+import psutil
+
 
 ## Setup the logger for debug
 import sys
@@ -44,12 +50,7 @@ except Exception as e:
 
 logger.info("INFO : ollama exists")
     
-## Run Ollama as a background process
-import time
-import ollama
-import time
-import subprocess
-import psutil
+
 
 # Code block to measure time to load model
 start_time = time.time()
@@ -77,9 +78,15 @@ else:
   try:
       # Start the background process
       serve_process = subprocess.Popen(['ollama', 'serve'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
+    
       # Wait for 3 seconds to allow the background process to start
-      time.sleep(3)
+      time.sleep(3)      
+      logger.info("INFO: Ollama server started")
+
+      # let us load LLAMA2
+      logger.info(f"INFO: pulling llama2 from Ollama library")
+      os.system("ollama pull llama2")
+
 
       response = ollama.chat(model='llama2', messages=[{'role': 'user', 'content': 'Why is the sky blue?'}])
       if ( response['done'] == True):
@@ -118,7 +125,7 @@ async def start():
 
   # load index from disk: Assumes that the bootstrap.py job has been run
   db2 = chromadb.PersistentClient(path="./chroma_db")
-  chroma_collection = db2.get_or_create_collection("quickstart")
+  chroma_collection = db2.get_or_create_collection("quickstart-ollama")
   vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
   
   storage_context = StorageContext.from_defaults(persist_dir="~/data/index", vector_store=vector_store)
@@ -129,31 +136,55 @@ async def start():
   query_engine = index.as_query_engine()
   #Streaming does not work
   #query_engine = index.as_query_engine(streaming=True, similarity_top_k=1)
+
   
-  response = query_engine.query("What did the author do growing up?")
-  display(Markdown(f"<b>{response}</b>"))
+  response = query_engine.query("What is SEBI and what are its responsibilities in India?")
+#  display(Markdown(f"<b>{response}</b>"))
 
   logger.info(f"INFO : Inside On chat start: Response from Query Engine{response}")
   
+  #set up Chainlit session
   cl.user_session.set("query_engine", query_engine)
-  await cl.Message(content=f"You have started a chat with LLama2 Model!").send()
+  image = cl.Image(path="/home/cdsw/images/Llama2.jpg", name="image1", display="inline")
+
+  # Attach the image to the message
+  await cl.Message(
+      content="You have started a chat with LLama2 Model!",
+      elements=[image],
+  ).send()
+#    
+#@cl.step
+#async def wait_while_processing():
+#    # Simulate a running task
+#    await cl.Message(content="").send()
+#    logger.info(f"INFO: Inside Step")
+#  
   
 @cl.on_message
 async def main(message: cl.Message):
     
   logger.info(f"INFO : Inside On Message:")  
- 
+  
+  #show processing
+  await cl.Message(content="").send()
+  
   query_engine = cl.user_session.get("query_engine") # type: RetrieverQueryEngine
   
 
   response = await cl.make_async(query_engine.query)(message.content)
-  logger.info(f"INFO:{response}")
+  logger.info(f"INFO:{response} ")
 
   
+  elements = [
+    cl.Text(name="Response_LLAMA2_Model", content=response.response, display="inline")]
+  
+  
   await cl.Message(
-      content=response
+      content="" , elements=elements
   ).send()
 
+  
+  
 # For some reason streaming doesn't work 
 #  response_stream = await cl.make_async(query_engine.query)(message.content)
 #  logger.info(f"INFO:{response_stream}")

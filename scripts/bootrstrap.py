@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 
 
-os.system("pip install -r requirements.txt")
+os.system("pip install -r -q requirements.txt")
 #
 ## Validate first if ollama is available else. 
 try:
@@ -86,16 +86,18 @@ import ollama
 # Get the shared logger
 from logging_config import get_logger
 logger = get_logger(__name__)
-
+#os.environ["ALLOW_RESET"]="FALSE"
 
 logger.info("INFO: Running the Bootstrap")
 ## Let us setup Vectorindex for Vectorstoreindex
 embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
-
+#make sure that you ave run the site_scrapper.py Job to pull data in the raw directory 
 logger.info("INFO: Reading the data")
-documents = SimpleDirectoryReader("~/data/paul_graham/").load_data()
+#documents = SimpleDirectoryReader("~/data/paul_graham/").load_data()
+documents = SimpleDirectoryReader("/home/cdsw/data/raw/").load_data()
 db = chromadb.PersistentClient(path="./chroma_db")
+#db.reset()
 chroma_collection = db.get_or_create_collection("quickstart-ollama")
 
 
