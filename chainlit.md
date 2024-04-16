@@ -11,6 +11,7 @@ This bot is used for Demo purposes on data webscrapped from Financial tutorial w
 - *Retrieval Augmented Generation (RAG) Paper:** ADD LINK HERE
 - **Zerodha:**  Add link here
 - ** Site_scraper:** Add Link here
-## Welcome screen
-
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+##  Example Queries : 
+- Can you give me an example of Time value of Money
+- Give me an example of how to calculate bond yields
+- How can we calculate the McCulay duration of an short term debt fund

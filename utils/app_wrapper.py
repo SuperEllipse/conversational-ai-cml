@@ -22,9 +22,9 @@ logger.critical("This is a critical message.")
 
 
 
-#chainlit_app_file = "~/lllm/ollama-conversational-ai/main.py"
-chainlit_app_file = "~/scripts/RAG.py"
-#chainlit_app_file = "~/scripts/test_chainlit.py"
+#chainlit_app_file = "~/scripts/RAG.py"
+chainlit_app_file = "~/scripts/Chat.py"
+
 
 print(f"Access the chainlit application here:\n https://read-only-{os.environ['CDSW_ENGINE_ID']}.{os.environ['CDSW_DOMAIN']}")
 os.system(f"chainlit run --host localhost --port $CDSW_READONLY_PORT {chainlit_app_file}")

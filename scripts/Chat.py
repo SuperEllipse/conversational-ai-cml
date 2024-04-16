@@ -52,6 +52,10 @@ logger.info("INFO : ollama exists")
     
 
 
+# Code block to measure time to load model
+start_time = time.time()
+
+
 def is_process_running(process_name):
   """
   Check if a process with the given name is running.
@@ -63,7 +67,6 @@ def is_process_running(process_name):
     except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
       pass
   return False
-
 
 # Check if the 'ollama' process is already running
 serve_process=None
@@ -104,45 +107,64 @@ elapsed_time = end_time - start_time
 logger.info(f"INFO: Model Loaded and response, Time required: {elapsed_time:.6f} seconds")
 
 
-        
   
   
-## CHAINLIT : chat with user 
-
+#We will use Chainlit for our conversations
 import chainlit as cl
 @cl.on_chat_start
 async def start():
 
+  
   logger.info("INFO : Inside On chat start")
+  
   #Let us set up our LLM Now
-  Settings.llm = Ollama(model="llama2", keep_alive=-1)
+  Settings.llm = Ollama(model="llama2", keep_alive=-1, request_timeout=60.0)
   Settings.llm.base_url="http://127.0.0.1:8080"
-
-
   Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
   # load index from disk: Assumes that the bootstrap.py job has been run
   db2 = chromadb.PersistentClient(path="./chroma_db")
   chroma_collection = db2.get_or_create_collection("quickstart-ollama")
   vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-  
   storage_context = StorageContext.from_defaults(persist_dir="~/data/index", vector_store=vector_store)
   logger.info("INFO:Loading the Index")
   index = load_index_from_storage(storage_context, embed_model=Settings.embed_model)
 
 
-  query_engine = index.as_query_engine()
-  #Streaming does not work
-  #query_engine = index.as_query_engine(streaming=True, similarity_top_k=1)
+  # Let us Configure the Chat Engine
+  from llama_index.core.memory import ChatMemoryBuffer
 
-  
-  response = query_engine.query("What is SEBI and what are its responsibilities in India?")
+  memory = ChatMemoryBuffer.from_defaults(token_limit=32000)
+#  chat_engine = index.as_chat_engine()
+  chat_engine = index.as_chat_engine(
+      chat_mode="context",
+      memory=memory,
+      system_prompt=(
+          "You are a chatbot, able to have normal interactions, as well as talk"
+          " about Personal Finance"
+      ),
+  )
+  logger.info(f"INFO: Chat Engine Created : type {type(chat_engine)}")
+#  query_engine = index.as_query_engine()
+#  #Streaming does not work
+#  #query_engine = index.as_query_engine(streaming=True, similarity_top_k=1)
+#
+#  
+#  response = query_engine.query("What is SEBI and what are its responsibilities in India?")
 #  display(Markdown(f"<b>{response}</b>"))
+
+  response = chat_engine.chat("Hello")
 
   logger.info(f"INFO : Inside On chat start: Response from Query Engine{response}")
   
+  # This allows us to test if the Chat Holds memory and can stream
+#  response = chat_engine.stream_chat("Can you tell me more?")
+#  for token in response.response_gen:
+#    logger.info(f"{token}")
+  
+  
   #set up Chainlit session
-  cl.user_session.set("query_engine", query_engine)
+  cl.user_session.set("chat_engine", chat_engine)
   image = cl.Image(path="/home/cdsw/images/Llama2.jpg", name="image1", display="inline")
 
   # Attach the image to the message
@@ -166,23 +188,54 @@ async def main(message: cl.Message):
   #show processing
   await cl.Message(content="").send()
   
-  query_engine = cl.user_session.get("query_engine") # type: RetrieverQueryEngine
+  chat_engine = cl.user_session.get("chat_engine") # type: RetrieverQueryEngine
   
+#uncomment this if you do not want to use streaming
+#  response = await cl.make_async(chat_engine.chat)(message.content)
+#  logger.info(f"INFO:{response} ")
+#
+#  
+#  elements = [
+#    cl.Text(name="Response_LLAMA2_Model", content=response.response, display="inline")]
+#  
+#  
+#  await cl.Message(
+#      content="" , elements=elements
+#  ).send()
 
-  response = await cl.make_async(query_engine.query)(message.content)
-  logger.info(f"INFO:{response} ")
+# Comment lines below if you do not want to use streaming
+  response_stream = await cl.make_async(chat_engine.stream_chat)(message.content)
+  logger.info(f"INFO:{response_stream}")
 
-  
-  elements = [
-    cl.Text(name="Response_LLAMA2_Model", content=response.response, display="inline")]
-  
-  
-  await cl.Message(
-      content="" , elements=elements
-  ).send()
+  msg = cl.Message(content="")  
+  for token in response_stream.response_gen:
+    await msg.stream_token(token)
+  await msg.send()
 
+
+
+@cl.on_stop
+async def on_stop():
+  logger.info(f"INFO : Inside On Stop:")  
+  
+  #show processing
+  await cl.Message(content="").send()
+  
+  chat_engine = cl.user_session.get("chat_engine") # type: RetrieverQueryEngine
+  chat_engine.reset()
+  
+@cl.on_chat_end
+async def on_chat_end():
+  logger.info(f"INFO : Inside On End:")
+
+  #show processing
+  await cl.Message(content="").send()
+
+  chat_engine = cl.user_session.get("chat_engine") # type: RetrieverQueryEngine
+  chat_engine.reset()
   
   
+    
 # For some reason streaming doesn't work 
 #  response_stream = await cl.make_async(query_engine.query)(message.content)
 #  logger.info(f"INFO:{response_stream}")
