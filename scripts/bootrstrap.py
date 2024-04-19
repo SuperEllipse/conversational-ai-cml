@@ -41,52 +41,30 @@ except Exception as e:
     print (f"You need to have installed ollama to make this application work. Have you chosen the right runtime ?")
     sys.exit(1)  # Exit with a non-zero status code
 
-    
+import shutil
+
+
+## Copy the init.py file to overcome the SQLLite3 issue reported in Chromadb
+# More details here : https://docs.trychroma.com/troubleshooting
+source_file = '/home/cdsw/utils/__init__.py'
+destination_file = '/home/cdsw/.local/lib/python3.11/site-packages/chromadb/__init__.py'
+
+try:
+    shutil.copy2(source_file, destination_file)
+    logger.info(f"INFO:File copied successfully from {source_file} to {destination_file}")
+except shutil.Error as e:
+    print(f"Error occurred while copying file for ChromadB setup: {e}")
+    sys.exit(1)
+except IOError as e:
+    print(f"Error occurred while accessing file for ChromadB setup: {e}")
+    sys.exit(1)
+
+        
     
 ## Run Ollama as a background process
 import time
 import ollama
-#
-#try:
-#    # Start the background process
-#    serve_process = subprocess.Popen(['ollama', 'serve'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-#
-#    # Wait for 3 seconds to allow the background process to start
-#    time.sleep(3)
-#
-#
-##    # What should be the size of the models here ?? 
-##    models = ['gemma:2b', 'llama2']
-##    for model in models:
-#
-###NEED TO FIGURE OUT HOW TO PULL OLLAMA PULL IN BOOTSTRAP or CHECK if it is allready pulled and not put it ther eagain
-##      ollama.pull(model)
-#
-#
-#    
-##   ollama.pull('llama2')
-##    response = ollama.chat(model='gemma:2b', messages=[{'role': 'user', 'content': 'Why is the sky blue?'}])
-#    response = ollama.generate(model='llama2', prompt='Why is the sky blue?', keep_alive=-1)
-#    if ( response['done'] == True):
-#      print('MODEL RESPONSE OBTAINED')
-#    print(response)
-#      
-#    
-##    # Terminate the background process
-##    serve_process.terminate()
-#
-#
-#except Exception as e:
-#    print(f"Error: {e}")
-#    # Terminate the background process if it's still running
-#    if serve_process.poll() is None:
-#        serve_process.terminate()
-#    sys.exit(1)
 
-# Get the shared logger
-from logging_config import get_logger
-logger = get_logger(__name__)
-#os.environ["ALLOW_RESET"]="FALSE"
 
 logger.info("INFO: Running the Bootstrap")
 ## Let us setup Vectorindex for Vectorstoreindex
@@ -94,7 +72,9 @@ embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
 #make sure that you ave run the site_scrapper.py Job to pull data in the raw directory 
 logger.info("INFO: Reading the data")
+# reading up Paul Graham
 #documents = SimpleDirectoryReader("~/data/paul_graham/").load_data()
+# Reading up Zerodha Varsity data.
 documents = SimpleDirectoryReader("/home/cdsw/data/raw/").load_data()
 db = chromadb.PersistentClient(path="./chroma_db")
 #db.reset()

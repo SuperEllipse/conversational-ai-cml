@@ -14,15 +14,15 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 # Log messages at different levels
-logger.debug("This is a debug message.")
+#logger.debug("This is a debug message.")
 logger.info("This is an informational message.")
-logger.warning("This is a warning message.")
-logger.error("This is an error message.")
-logger.critical("This is a critical message.")
+#logger.warning("This is a warning message.")
+#logger.error("This is an error message.")
+#logger.critical("This is a critical message.")
 
 
 
-#chainlit_app_file = "~/scripts/RAG.py"
+#chainlit_app_file = "~/scripts/Query.py"
 chainlit_app_file = "~/scripts/Chat.py"
 
 
@@ -30,7 +30,7 @@ print(f"Access the chainlit application here:\n https://read-only-{os.environ['C
 os.system(f"chainlit run --host localhost --port $CDSW_READONLY_PORT {chainlit_app_file}")
 
 
-#This seems to work
+#This is a way to test if OLLAMA is setup
 #prompt = '\'{ \
 #  "model": "gemma:2b", \
 #  "prompt": "Why is the sky blue?" }\''

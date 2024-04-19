@@ -169,7 +169,7 @@ async def start():
 
   # Attach the image to the message
   await cl.Message(
-      content="You have started a chat with LLama2 Model!",
+      content="You have started a chat with LLama2 Model augmented for Personal Finance.\n This SHOULD NOT be construed as Investment Advise!",
       elements=[image],
   ).send()
 #    
@@ -235,17 +235,3 @@ async def on_chat_end():
   chat_engine.reset()
   
   
-    
-# For some reason streaming doesn't work 
-#  response_stream = await cl.make_async(query_engine.query)(message.content)
-#  logger.info(f"INFO:{response_stream}")
-
-
-#  logger.info(f"type :{type(response_stream.response_gen)}")
-#  logger.info(f"value :{response_stream.response_gen}")
-#    
-#  for token in response_stream.response_gen:
-#    logger.info("Inside Generator for loop")
-#    logger.info(f"TOKEN:{token}")
-#    await msg.stream_token(token)
-#  await msg.send()

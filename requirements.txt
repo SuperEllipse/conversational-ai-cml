@@ -11,3 +11,7 @@ llama-index-vector-stores-chroma
 chromadb
 fastembed
 trafilatura
+litellm
+trulens-eval==0.27.0
+ipython>=8.12.0 
+ipywidgets>=8.0.6
