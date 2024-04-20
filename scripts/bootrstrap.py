@@ -3,6 +3,31 @@
 import os
 import sys
 import subprocess
+import utils.logging_config
+import imp
+imp.reload(utils.logging_config)
+
+# Get the shared logger
+from utils.logging_config import get_logger
+logger = get_logger(__name__)
+
+
+import shutil
+## Copy the init.py file to overcome the SQLLite3 issue reported in Chromadb
+# More details here : https://docs.trychroma.com/troubleshooting
+source_file = '/home/cdsw/utils/__init__.py'
+destination_file = '/home/cdsw/.local/lib/python3.11/site-packages/chromadb/__init__.py'
+
+try:
+    shutil.copy2(source_file, destination_file)
+    logger.info(f"INFO:File copied successfully from {source_file} to {destination_file}")
+except shutil.Error as e:
+    print(f"Error occurred while copying file for ChromadB setup: {e}")
+    sys.exit(1)
+except IOError as e:
+    print(f"Error occurred while accessing file for ChromadB setup: {e}")
+    sys.exit(1)
+
 # for Vectorstore index
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
 from llama_index.embeddings.fastembed import FastEmbedEmbedding
@@ -13,14 +38,7 @@ import chromadb
 ## Setup the logger for debug
 import sys
 sys.path.append('/home/cdsw/utils')
-import imp
-import logging_config
-imp.reload(logging_config)
 
-
-# Get the shared logger
-from logging_config import get_logger
-logger = get_logger(__name__)
 
 
 
@@ -42,22 +60,6 @@ except Exception as e:
     sys.exit(1)  # Exit with a non-zero status code
 
 import shutil
-
-
-## Copy the init.py file to overcome the SQLLite3 issue reported in Chromadb
-# More details here : https://docs.trychroma.com/troubleshooting
-source_file = '/home/cdsw/utils/__init__.py'
-destination_file = '/home/cdsw/.local/lib/python3.11/site-packages/chromadb/__init__.py'
-
-try:
-    shutil.copy2(source_file, destination_file)
-    logger.info(f"INFO:File copied successfully from {source_file} to {destination_file}")
-except shutil.Error as e:
-    print(f"Error occurred while copying file for ChromadB setup: {e}")
-    sys.exit(1)
-except IOError as e:
-    print(f"Error occurred while accessing file for ChromadB setup: {e}")
-    sys.exit(1)
 
         
     
