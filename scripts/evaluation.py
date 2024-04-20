@@ -286,3 +286,68 @@ tru_recorder_3 = get_prebuilt_trulens_recorder(
 )
 run_evals(eval_questions, tru_recorder_3, sentence_window_engine_3)
 tru.get_leaderboard(app_ids=[])
+
+# Let us run another advanced RAG automerging index 
+from utils.rag_helper import build_automerging_index
+
+index = build_automerging_index(
+    documents,
+    save_dir="./merging_index",
+)
+auto_merging_index_0 = build_automerging_index(
+    documents,
+    save_dir="merging_index_0",
+    chunk_sizes=[2048,512],
+)
+
+auto_merging_engine_0 = get_automerging_query_engine(
+    auto_merging_index_0,
+    similarity_top_k=12,
+    rerank_top_n=6,
+)
+
+
+tru_recorder_AM_1 = get_prebuilt_trulens_recorder(
+    auto_merging_engine_0,
+    app_id ='Merging Index 2048 & 512', feedbacks=feedbacks
+)
+
+run_evals(eval_questions, tru_recorder_AM_1, auto_merging_engine_0)
+
+# run Evals
+Tru().get_leaderboard(app_ids=[])
+
+
+#Now using 3 Layers of Automerging
+
+
+auto_merging_index_1 = build_automerging_index(
+    documents,
+    save_dir="merging_index_1",
+    chunk_sizes=[2048,512,128],
+)
+
+auto_merging_engine_1 = get_automerging_query_engine(
+    auto_merging_index_1,
+    similarity_top_k=12,
+    rerank_top_n=6,
+)
+
+tru_recorder_AM_2 = get_prebuilt_trulens_recorder(
+    auto_merging_engine_1,
+    app_id ='Merging Index 2048 & 512 & 128', feedbacks=feedbacks
+)
+
+run_evals(eval_questions, tru_recorder_AM_2, auto_merging_engine_1)
+
+Tru().get_leaderboard(app_ids=[])
+
+
+
+
+
+
+
+
+
+
