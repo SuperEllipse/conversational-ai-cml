@@ -4,8 +4,8 @@ import os
 import sys
 import subprocess
 import utils.logging_config
-import imp
-imp.reload(utils.logging_config)
+import importlib
+importlib.reload(utils.logging_config)
 
 # Get the shared logger
 from utils.logging_config import get_logger
@@ -90,7 +90,11 @@ index = VectorStoreIndex.from_documents(
     documents, storage_context=storage_context, embed_model=embed_model
 )
 
-
-logger.info("INFO:Saving the Index")
-index.storage_context.persist(persist_dir="~/data/index")
+#let us test the vectorstore index : Need to make sure that Ollama and Llama2 exists before this.
+query_engine = index.as_query_engine()
+response = query_engine.query("What is the role of RBI?")
+print(response)
+#
+#logger.info("INFO:Saving the Index")
+#index.storage_context.persist(persist_dir="~/data/index")
 

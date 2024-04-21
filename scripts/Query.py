@@ -126,9 +126,12 @@ async def start():
   chroma_collection = db2.get_or_create_collection("quickstart-ollama")
   vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
   
-  storage_context = StorageContext.from_defaults(persist_dir="~/data/index", vector_store=vector_store)
+#  storage_context = StorageContext.from_defaults(persist_dir="~/data/index", vector_store=vector_store)
+  storage_context = StorageContext.from_defaults(vector_store=vector_store)
   logger.info("INFO:Loading the Index")
-  index = load_index_from_storage(storage_context, embed_model=Settings.embed_model)
+  #index = load_index_from_storage(storage_context, embed_model=Settings.embed_model)
+  index = VectorStoreIndex.from_vector_store(
+    vector_store, storage_context=storage_context)
 
 
   query_engine = index.as_query_engine()

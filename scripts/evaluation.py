@@ -58,7 +58,7 @@ def is_process_running(process_name):
   """
   for proc in psutil.process_iter(['name']):
     try:
-      if process_name.lower() in proc.info['name'].lower() and proc.status <> "zombie":
+      if process_name.lower() in proc.info['name'].lower():
         return True
     except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
       pass
@@ -117,52 +117,51 @@ import time
 import ollama
 
 
-logger.info("INFO : Inside On chat start")
 #Let us set up our LLM Now
 #Settings.llm = Ollama(model="llama2", keep_alive=-1)
-Settings.llm = Ollama(model="llama2", request_timeout=1000)
+Settings.llm = Ollama(model="llama2", request_timeout=10000)
 
 Settings.llm.base_url="http://127.0.0.1:8080"
 
-logger.info("INFO: Running the Bootstrap")
 ## Let us setup Vectorindex for Vectorstoreindex
 embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
-#make sure that you ave run the site_scrapper.py Job to pull data in the raw directory 
-logger.info("INFO: Reading the data")
-# reading up Paul Graham
-documents = SimpleDirectoryReader("~/data/paul_graham/").load_data()
-# Reading up Zerodha Varsity data.
-#documents = SimpleDirectoryReader("/home/cdsw/data/raw/").load_data()
-db = chromadb.PersistentClient(path="./chroma_db")
-#db.reset()
-chroma_collection = db.get_or_create_collection("quickstart-paulgraham")
 
+Settings.llm = Ollama(model="llama2", request_timeout=10000)
+Settings.llm.base_url="http://127.0.0.1:8080"
+Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
-logger.info("INFO:Setting up the vector Store")
+# load index from disk: Assumes that the bootstrap.py job has been run
+db2 = chromadb.PersistentClient(path="./chroma_db")
+chroma_collection = db2.get_or_create_collection("quickstart-ollama")
 vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+#  storage_context = StorageContext.from_defaults(persist_dir="~/data/index", vector_store=vector_store)
+# Ensure that bootstrap.py has run and created the indexes
 storage_context = StorageContext.from_defaults(vector_store=vector_store)
-index = VectorStoreIndex.from_documents(
-    documents, storage_context=storage_context, embed_model=embed_model
-)
+logger.info("INFO:Loading the Index")
+#index = load_index_from_storage(storage_context, embed_model=Settings.embed_model)
+index = VectorStoreIndex.from_vector_store(
+  vector_store, storage_context=storage_context)
+
+
 query_engine = index.as_query_engine()
 
-response = query_engine.query("What did the author do growing up?")
+response = query_engine.query("What is SEBI and what are its responsibilities?", )
+
+#response = query_engine.query("What is the role of RBI?")
+
 print(response)
 
 #initialize feedback function
-from trulens_eval import Tru
-tru = Tru()
-tru.reset_database()
+from trulens_eval import Tru, Feedback, Select
 
 #from trulens_eval.feedback.provider import OpenAI
 from trulens_eval.feedback.provider.litellm import LiteLLM #we replace litellm as a local provider
-
-from trulens_eval import Feedback, Tru, Select
 import numpy as np
 
-# Initialize provider class, replacing OpenAI will selfhosted llm
-#provider = OpenAI()
+tru = Tru()
+tru.reset_database()
 
 provider = LiteLLM()
 provider.model_engine ="ollama/llama2"
@@ -205,7 +204,7 @@ from trulens_eval import TruLlama
 feedbacks=[f_groundedness, f_answer_relevance, f_context_relevance]
 
 tru_query_engine_recorder = TruLlama(query_engine,
-    app_id='LlamaIndex_App1',
+    app_id='Baseline',
     feedbacks=feedbacks)
 
 ### or as context manager
@@ -238,14 +237,13 @@ tru_query_engine_recorder = TruLlama(query_engine,
 
 # go through a list of questions for a baseline
 
-from trulens_eval import Tru
 def run_evals(eval_questions, tru_recorder, query_engine):
     for question in eval_questions:
         with tru_recorder as recording:
             response = query_engine.query(question)
             
 eval_questions = []
-with open('./data/questions/paul_graham_eval_questions.txt', 'r') as file:
+with open('./data/questions/evaluation_questions.txt', 'r') as file:
     for line in file:
         # Remove newline character and convert to integer
         item = line.strip()
@@ -257,15 +255,13 @@ for question in eval_questions:
         query_engine.query(question)
         
 import pandas as pd
-records, feedback = tru.get_records_and_feedback(app_ids=["LlamaIndex_App1"])
+records, feedback = tru.get_records_and_feedback(app_ids=["Baseline"])
 pd.set_option("display.max_colwidth", None)
 records[["input", "output"] + feedback]
 
 tru.get_leaderboard(app_ids=[])
-
-
-
 # Let us go through these guestions now for sentencewindowNode Parser
+documents = SimpleDirectoryReader("/home/cdsw/data/raw/").load_data()
 from  utils.rag_helper import *
 sentence_window_index_1 = build_sentence_window_index(documents, save_dir="./data/index/sentence_index1", window_size=1)
 sentence_window_engine_1 = get_sentence_window_query_engine( sentence_window_index_1)
@@ -273,7 +269,7 @@ tru_recorder_1 = get_prebuilt_trulens_recorder(
     sentence_window_engine_1,
     app_id='sentence window engine 1', feedbacks=feedbacks
 )
-
+run_evals(eval_questions, tru_recorder_1, sentence_window_engine_1)
 tru.get_leaderboard(app_ids=[])
 
 
@@ -290,13 +286,10 @@ tru.get_leaderboard(app_ids=[])
 # Let us run another advanced RAG automerging index 
 from utils.rag_helper import build_automerging_index
 
-index = build_automerging_index(
-    documents,
-    save_dir="./merging_index",
-)
+
 auto_merging_index_0 = build_automerging_index(
     documents,
-    save_dir="merging_index_0",
+    save_dir="./data/index/merging_index_0",
     chunk_sizes=[2048,512],
 )
 
@@ -315,7 +308,7 @@ tru_recorder_AM_1 = get_prebuilt_trulens_recorder(
 run_evals(eval_questions, tru_recorder_AM_1, auto_merging_engine_0)
 
 # run Evals
-Tru().get_leaderboard(app_ids=[])
+tru.get_leaderboard(app_ids=[])
 
 
 #Now using 3 Layers of Automerging
@@ -323,7 +316,7 @@ Tru().get_leaderboard(app_ids=[])
 
 auto_merging_index_1 = build_automerging_index(
     documents,
-    save_dir="merging_index_1",
+    save_dir="./data/index/merging_index_1",
     chunk_sizes=[2048,512,128],
 )
 
@@ -340,14 +333,4 @@ tru_recorder_AM_2 = get_prebuilt_trulens_recorder(
 
 run_evals(eval_questions, tru_recorder_AM_2, auto_merging_engine_1)
 
-Tru().get_leaderboard(app_ids=[])
-
-
-
-
-
-
-
-
-
-
+tru.get_leaderboard(app_ids=[])

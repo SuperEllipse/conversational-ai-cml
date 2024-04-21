@@ -3,8 +3,9 @@
 #helper file: Source is DeepLearning.ai course on RAG Evaluation
 import os
 from dotenv import load_dotenv, find_dotenv
-
+from llama_index.vector_stores.chroma import ChromaVectorStore
 import numpy as np
+import chromadb
 from trulens_eval import (
     Feedback,
     TruLlama,

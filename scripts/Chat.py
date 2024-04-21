@@ -126,10 +126,15 @@ async def start():
   db2 = chromadb.PersistentClient(path="./chroma_db")
   chroma_collection = db2.get_or_create_collection("quickstart-ollama")
   vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-  storage_context = StorageContext.from_defaults(persist_dir="~/data/index", vector_store=vector_store)
-  logger.info("INFO:Loading the Index")
-  index = load_index_from_storage(storage_context, embed_model=Settings.embed_model)
+#  storage_context = StorageContext.from_defaults(persist_dir="~/data/index", vector_store=vector_store)
+#  logger.info("INFO:Loading the Index")
+#  index = load_index_from_storage(storage_context, embed_model=Settings.embed_model)
 
+  # we load the data saved in the vectorstore
+  storage_context = StorageContext.from_defaults(vector_store=vector_store)
+  logger.info("INFO:Loading the Index")
+  index = VectorStoreIndex.from_vector_store(
+    vector_store, storage_context=storage_context)  
 
   # Let us Configure the Chat Engine
   from llama_index.core.memory import ChatMemoryBuffer
